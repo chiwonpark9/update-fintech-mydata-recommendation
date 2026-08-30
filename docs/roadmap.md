@@ -35,7 +35,7 @@ docs: define product scope and initial architecture
 ### 구현
 
 - [x] Spring Boot 프로젝트
-- [ ] React + TypeScript + Vite 프로젝트
+- [x] React + TypeScript + Vite 프로젝트
 - [ ] MySQL Docker Compose
 - [x] Health Check API
 - [ ] 공통 오류 응답
@@ -46,7 +46,7 @@ docs: define product scope and initial architecture
 
 ```text
 feat: bootstrap Spring Boot health API
-chore: bootstrap React frontend application
+feat: connect React frontend to backend health API
 chore: add local mysql environment with docker compose
 ci: verify frontend and backend on pull requests
 ```

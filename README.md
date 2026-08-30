@@ -24,7 +24,7 @@
 
 | 영역 | 기술 | 적용 목적 |
 | --- | --- | --- |
-| Frontend | React, TypeScript, Vite | 독립 화면과 삽입형 컴포넌트 구현 |
+| Frontend | React 19.2.8, TypeScript 6.0.2, Vite 8.2.2 | 독립 화면과 삽입형 컴포넌트 구현 |
 | Backend | Java 17, Spring Boot 4.1.1 | 도메인 API와 추천 로직 구현 |
 | Security | Spring Security, JWT | 인증·인가와 제휴사별 접근 제어 |
 | Database | MySQL | 사용자·마이데이터·카드 상품 데이터 관리 |
@@ -52,17 +52,19 @@
 - [ADR-0001: 모듈형 모놀리스로 시작](docs/adr/0001-modular-monolith.md)
 - [ADR-0002: 핵심 기술 스택](docs/adr/0002-technology-stack.md)
 - [ADR-0003: Spring Boot 백엔드 기준](docs/adr/0003-spring-boot-baseline.md)
+- [ADR-0004: React 프론트엔드 기준](docs/adr/0004-react-vite-baseline.md)
 - [백엔드 실행 가이드](docs/backend-guide.md)
+- [프론트엔드 실행·구조 가이드](docs/frontend-guide.md)
 
 ## 현재 상태
 
 `Phase 1 — 실행 가능한 프로젝트 골격`
 
-Spring Boot 백엔드와 첫 Health Check API, 웹 계층 테스트를 완성했습니다. 다음 단계에서 React 프론트엔드 골격을 연결합니다.
+Spring Boot Health API와 React 프론트엔드를 연결했습니다. API 응답의 형식을 런타임에서 검증하며 로딩·성공·실패·재시도 상태를 UI에 표시합니다. 백엔드 테스트 2개와 프론트엔드 테스트 4개가 통과하고, 양쪽 배포용 빌드를 검증한 상태입니다.
 
 ## 로컬 실행
 
-필수 환경은 Java 17입니다. 별도의 Gradle 설치 없이 프로젝트에 포함된 Gradle Wrapper를 사용합니다.
+필수 환경은 Java 17과 Node.js 22.12 이상입니다. 별도의 Gradle 설치 없이 프로젝트에 포함된 Gradle Wrapper를 사용합니다.
 
 ```bash
 cd backend
@@ -76,6 +78,16 @@ cd backend
 | --- | --- |
 | 애플리케이션 API 확인 | `GET http://localhost:8080/api/v1/health` |
 | 운영 상태 확인 | `GET http://localhost:8080/actuator/health` |
+
+새 터미널에서 프론트엔드를 실행합니다.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+브라우저에서 `http://localhost:5173`을 열면 됩니다. 개발 중 `/api` 요청은 Vite 프록시를 통해 로컬 Spring 서버로 전달됩니다.
 
 ## 기록 원칙
 
