@@ -17,6 +17,7 @@
 # Backend
 backend/.gradle/
 backend/build/
+backend/build
 backend/out/
 
 # Frontend

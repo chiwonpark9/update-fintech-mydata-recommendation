@@ -25,7 +25,7 @@
 | 영역 | 기술 | 적용 목적 |
 | --- | --- | --- |
 | Frontend | React, TypeScript, Vite | 독립 화면과 삽입형 컴포넌트 구현 |
-| Backend | Java, Spring Boot | 도메인 API와 추천 로직 구현 |
+| Backend | Java 17, Spring Boot 4.1.1 | 도메인 API와 추천 로직 구현 |
 | Security | Spring Security, JWT | 인증·인가와 제휴사별 접근 제어 |
 | Database | MySQL | 사용자·마이데이터·카드 상품 데이터 관리 |
 | Cache | Redis | 소비 집계 캐시와 AI 요청 제한 |
@@ -51,16 +51,31 @@
 - [개발 로드맵](docs/roadmap.md)
 - [ADR-0001: 모듈형 모놀리스로 시작](docs/adr/0001-modular-monolith.md)
 - [ADR-0002: 핵심 기술 스택](docs/adr/0002-technology-stack.md)
+- [ADR-0003: Spring Boot 백엔드 기준](docs/adr/0003-spring-boot-baseline.md)
+- [백엔드 실행 가이드](docs/backend-guide.md)
 
 ## 현재 상태
 
-`Phase 0 — 프로젝트 정의 및 설계`
+`Phase 1 — 실행 가능한 프로젝트 골격`
 
-현재는 코딩 전 단계로, 문제 정의와 범위, 기술 선택 기준을 확정하고 있습니다.
+Spring Boot 백엔드와 첫 Health Check API, 웹 계층 테스트를 완성했습니다. 다음 단계에서 React 프론트엔드 골격을 연결합니다.
 
 ## 로컬 실행
 
-애플리케이션 골격을 생성하는 다음 단계에서 작성합니다.
+필수 환경은 Java 17입니다. 별도의 Gradle 설치 없이 프로젝트에 포함된 Gradle Wrapper를 사용합니다.
+
+```bash
+cd backend
+./gradlew test
+./gradlew bootRun
+```
+
+서버 실행 후 다음 주소에서 상태를 확인할 수 있습니다.
+
+| 용도 | 주소 |
+| --- | --- |
+| 애플리케이션 API 확인 | `GET http://localhost:8080/api/v1/health` |
+| 운영 상태 확인 | `GET http://localhost:8080/actuator/health` |
 
 ## 기록 원칙
 
