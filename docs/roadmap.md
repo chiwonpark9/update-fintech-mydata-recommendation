@@ -4,7 +4,7 @@
 
 ## Phase 0. 프로젝트 정의
 
-### 학습 목표
+### 단계 목표
 
 - 요구사항과 구현 기술을 구분한다.
 - 시스템 경계와 MVP 범위를 설명할 수 있다.
@@ -26,7 +26,7 @@ docs: define product scope and initial architecture
 
 ## Phase 1. 실행 가능한 프로젝트 골격
 
-### 학습 목표
+### 단계 목표
 
 - Spring Boot와 React의 실행 구조를 이해한다.
 - Docker Compose로 MySQL을 재현 가능하게 실행한다.
@@ -125,7 +125,7 @@ ci: verify frontend and backend on pull requests
 - Origin 검증과 테마 토큰
 - 예제 제휴사 페이지
 - 모니터링·알람·백업·복구 훈련
-- 최종 README와 포트폴리오 정리
+- 최종 README와 기술 성과 정리
 
 ## 단계별 공통 완료 기준
 
