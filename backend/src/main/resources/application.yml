@@ -1,6 +1,17 @@
 spring:
   application:
     name: mydata-card-recommendation-api
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      connection-timeout: 3000
+      validation-timeout: 1000
+      maximum-pool-size: 10
+  flyway:
+    locations: classpath:db/migration
+    validate-on-migrate: true
 
 server:
   port: ${SERVER_PORT:8080}
@@ -13,3 +24,8 @@ management:
   endpoint:
     health:
       show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db

@@ -8,6 +8,10 @@
 - Spring Web MVC
 - Spring Boot Actuator
 - Jakarta Validation
+- Spring JDBC와 HikariCP
+- MySQL 8.4.11
+- Flyway
+- Testcontainers
 
 ## 프로젝트 구조
 
@@ -23,7 +27,10 @@ backend/
     │   │   └── system/api
     │   │       ├── HealthController.java
     │   │       └── HealthResponse.java
-    │   └── resources/application.yml
+    │   └── resources
+    │       ├── application.yml
+    │       └── db/migration
+    │           └── V1__initialize_service_metadata.sql
     └── test
         └── java/com/chiwonpark9/cardrecommendation
             ├── CardRecommendationApplicationTests.java
@@ -39,15 +46,36 @@ cd backend
 ./gradlew test
 ```
 
+전체 테스트를 실행하려면 Docker Desktop이 실행 중이어야 한다. Testcontainers는 테스트 전용 MySQL을 만들고 테스트가 끝나면 제거한다.
+
 현재 테스트는 다음을 검증한다.
 
-- Spring 애플리케이션 컨텍스트가 정상적으로 생성되는가
+- 실제 MySQL에서 Spring 애플리케이션 컨텍스트가 생성되는가
+- Flyway 마이그레이션이 실행되고 초기 데이터가 조회되는가
 - Health Controller가 HTTP 200과 약속한 JSON을 반환하는가
+
+## 빌드 산출물 위치
+
+일반 환경과 CI에서는 기본 `backend/build`를 사용한다. macOS에서 프로젝트가 `/Volumes/` 아래의 외장 드라이브에 있으면 AppleDouble 보조 파일이 클래스 스캔을 방해할 수 있어, Gradle이 사용자 내부 캐시의 `<프로젝트명>/backend-build`로 산출물을 자동 분리한다.
+
+필요하면 `BACKEND_BUILD_DIR` 환경 변수로 다른 생성물 경로를 지정할 수 있다. 소스와 Git 이력에는 영향을 주지 않는다.
 
 ## 서버 실행
 
+프로젝트 루트에서 환경 파일과 MySQL을 먼저 준비한다.
+
+```bash
+cp .env.example .env
+docker compose --env-file .env up -d --wait mysql
+```
+
+그다음 같은 환경 변수를 Spring Boot에 전달해 실행한다.
+
 ```bash
 cd backend
+set -a
+source ../.env
+set +a
 ./gradlew bootRun
 ```
 
@@ -81,3 +109,11 @@ GET /actuator/health
 ```
 
 Actuator Health는 로드 밸런서와 모니터링 시스템이 애플리케이션의 운영 상태를 확인하기 위한 엔드포인트다. 세부 내부 정보는 외부에 노출하지 않는다.
+
+### Readiness API
+
+```http
+GET /actuator/health/readiness
+```
+
+DB 연결을 포함해 현재 요청을 처리할 준비가 됐는지 판단한다. 실제 검증에서 MySQL 중지 시 HTTP 503, 재시작 후 HTTP 200으로 복구됐다. 향후 AWS의 로드 밸런서와 컨테이너 상태 검사에 연결할 수 있다.

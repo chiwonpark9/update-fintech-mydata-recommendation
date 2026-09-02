@@ -8,10 +8,39 @@ group = 'com.chiwonpark9'
 version = '0.1.0-SNAPSHOT'
 description = 'MyData card recommendation API'
 
+def configuredBuildDirectory = providers.environmentVariable('BACKEND_BUILD_DIR').orNull
+def runsFromMacExternalVolume = System.getProperty('os.name').toLowerCase().contains('mac') &&
+		projectDir.absolutePath.startsWith('/Volumes/')
+
+if (configuredBuildDirectory) {
+	layout.buildDirectory = file(configuredBuildDirectory)
+} else if (runsFromMacExternalVolume) {
+	layout.buildDirectory = file(
+			"${System.getProperty('user.home')}/Library/Caches/${projectDir.parentFile.name}/${rootProject.name}-build"
+	)
+}
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(17)
 	}
+}
+
+sourceSets {
+	main {
+		java {
+			exclude '**/._*'
+		}
+	}
+	test {
+		java {
+			exclude '**/._*'
+		}
+	}
+}
+
+springBoot {
+	mainClass = 'com.chiwonpark9.cardrecommendation.CardRecommendationApplication'
 }
 
 repositories {
@@ -20,16 +49,32 @@ repositories {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	runtimeOnly 'org.flywaydb:flyway-mysql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+	testImplementation 'org.testcontainers:testcontainers-mysql'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+def removeAppleDoubleBuildFiles = {
+	delete(fileTree(layout.buildDirectory.get().asFile) {
+		include '**/._*'
+	})
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+	doFirst {
+		removeAppleDoubleBuildFiles()
+	}
 }
 
 tasks.named('processResources') {
@@ -42,4 +87,13 @@ tasks.named('jar') {
 
 tasks.named('bootJar') {
 	exclude '**/._*'
+	doFirst {
+		removeAppleDoubleBuildFiles()
+	}
+}
+
+tasks.named('bootRun') {
+	doFirst {
+		removeAppleDoubleBuildFiles()
+	}
 }

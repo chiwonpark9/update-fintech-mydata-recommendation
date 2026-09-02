@@ -36,7 +36,7 @@ docs: define product scope and initial architecture
 
 - [x] Spring Boot 프로젝트
 - [x] React + TypeScript + Vite 프로젝트
-- [ ] MySQL Docker Compose
+- [x] MySQL Docker Compose
 - [x] Health Check API
 - [ ] 공통 오류 응답
 - [x] 백엔드 기본 테스트

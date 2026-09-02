@@ -27,7 +27,7 @@
 | Frontend | React 19.2.8, TypeScript 6.0.2, Vite 8.2.2 | 독립 화면과 삽입형 컴포넌트 구현 |
 | Backend | Java 17, Spring Boot 4.1.1 | 도메인 API와 추천 로직 구현 |
 | Security | Spring Security, JWT | 인증·인가와 제휴사별 접근 제어 |
-| Database | MySQL | 사용자·마이데이터·카드 상품 데이터 관리 |
+| Database | MySQL 8.4.11, Flyway, Testcontainers | 관계형 데이터 관리와 스키마 변경 검증 |
 | Cache | Redis | 소비 집계 캐시와 AI 요청 제한 |
 | AI | RAG, Embedding | 카드 혜택과 약관에 근거한 상담 답변 |
 | Infrastructure | Docker, AWS | 재현 가능한 실행 환경과 운영 배포 |
@@ -53,21 +53,35 @@
 - [ADR-0002: 핵심 기술 스택](docs/adr/0002-technology-stack.md)
 - [ADR-0003: Spring Boot 백엔드 기준](docs/adr/0003-spring-boot-baseline.md)
 - [ADR-0004: React 프론트엔드 기준](docs/adr/0004-react-vite-baseline.md)
+- [ADR-0005: MySQL 개발·테스트 환경](docs/adr/0005-mysql-flyway-testcontainers.md)
 - [백엔드 실행 가이드](docs/backend-guide.md)
+- [데이터베이스 실행·설계 가이드](docs/database-guide.md)
 - [프론트엔드 실행·구조 가이드](docs/frontend-guide.md)
 
 ## 현재 상태
 
 `Phase 1 — 실행 가능한 프로젝트 골격`
 
-Spring Boot Health API와 React 프론트엔드를 연결했습니다. API 응답의 형식을 런타임에서 검증하며 로딩·성공·실패·재시도 상태를 UI에 표시합니다. 백엔드 테스트 2개와 프론트엔드 테스트 4개가 통과하고, 양쪽 배포용 빌드를 검증한 상태입니다.
+Spring Boot Health API와 React 프론트엔드를 연결하고, MySQL 8.4.11 개발 환경을 Docker Compose로 구성했습니다. Flyway가 시작 시 스키마 버전 1을 적용하며 Testcontainers 통합 테스트가 실제 MySQL에서 이를 검증합니다. DB 중지 시 readiness가 HTTP 503, 복구 후 HTTP 200을 반환하는 것도 확인했습니다.
 
 ## 로컬 실행
 
-필수 환경은 Java 17과 Node.js 22.12 이상입니다. 별도의 Gradle 설치 없이 프로젝트에 포함된 Gradle Wrapper를 사용합니다.
+필수 환경은 Java 17, Node.js 22.12 이상, Docker Desktop입니다. 별도의 Gradle 설치 없이 프로젝트에 포함된 Gradle Wrapper를 사용합니다.
+
+최초 한 번 로컬 환경 파일을 만들고 비밀번호 예시 값을 자신만의 값으로 변경합니다. 실제 `.env`는 Git에 포함되지 않습니다.
+
+```bash
+cp .env.example .env
+docker compose --env-file .env up -d --wait mysql
+```
+
+호스트의 기존 MySQL과 충돌하지 않도록 프로젝트 DB는 `localhost:3307`로 노출되고, 컨테이너 내부에서는 표준 포트 3306을 사용합니다.
 
 ```bash
 cd backend
+set -a
+source ../.env
+set +a
 ./gradlew test
 ./gradlew bootRun
 ```
@@ -78,6 +92,7 @@ cd backend
 | --- | --- |
 | 애플리케이션 API 확인 | `GET http://localhost:8080/api/v1/health` |
 | 운영 상태 확인 | `GET http://localhost:8080/actuator/health` |
+| DB 포함 준비 상태 확인 | `GET http://localhost:8080/actuator/health/readiness` |
 
 새 터미널에서 프론트엔드를 실행합니다.
 
@@ -88,6 +103,12 @@ npm run dev
 ```
 
 브라우저에서 `http://localhost:5173`을 열면 됩니다. 개발 중 `/api` 요청은 Vite 프록시를 통해 로컬 Spring 서버로 전달됩니다.
+
+작업을 마치면 데이터 볼륨을 보존한 채 MySQL만 중지합니다.
+
+```bash
+docker compose --env-file .env stop mysql
+```
 
 ## 기록 원칙
 
