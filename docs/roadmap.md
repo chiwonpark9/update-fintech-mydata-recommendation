@@ -38,7 +38,7 @@ docs: define product scope and initial architecture
 - [x] React + TypeScript + Vite 프로젝트
 - [x] MySQL Docker Compose
 - [x] Health Check API
-- [ ] 공통 오류 응답
+- [x] 공통 오류 응답
 - [x] 백엔드 기본 테스트
 - [ ] CI
 

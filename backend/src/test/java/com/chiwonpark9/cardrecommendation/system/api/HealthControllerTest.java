@@ -24,4 +24,13 @@ class HealthControllerTest {
 				.andExpect(jsonPath("$.status").value("UP"))
 				.andExpect(jsonPath("$.service").value("mydata-card-recommendation-api"));
 	}
+
+	@Test
+	void returnsProblemDetailForUnknownApiPath() throws Exception {
+		mockMvc.perform(get("/api/v1/missing"))
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+				.andExpect(jsonPath("$.code").value("COMMON_RESOURCE_NOT_FOUND"))
+				.andExpect(jsonPath("$.instance").value("/api/v1/missing"));
+	}
 }

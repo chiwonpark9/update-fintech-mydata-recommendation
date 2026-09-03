@@ -24,6 +24,11 @@ backend/
     ├── main
     │   ├── java/com/chiwonpark9/cardrecommendation
     │   │   ├── CardRecommendationApplication.java
+    │   │   ├── common/error
+    │   │   │   ├── ApiErrorCode.java
+    │   │   │   ├── ApiException.java
+    │   │   │   ├── ApiFieldError.java
+    │   │   │   └── GlobalExceptionHandler.java
     │   │   └── system/api
     │   │       ├── HealthController.java
     │   │       └── HealthResponse.java
@@ -53,6 +58,8 @@ cd backend
 - 실제 MySQL에서 Spring 애플리케이션 컨텍스트가 생성되는가
 - Flyway 마이그레이션이 실행되고 초기 데이터가 조회되는가
 - Health Controller가 HTTP 200과 약속한 JSON을 반환하는가
+- 검증 실패, 잘못된 JSON, 404, 405, 415와 예상 밖 오류가 같은 계약으로 반환되는가
+- 내부 예외 정보가 HTTP 500 응답에 노출되지 않는가
 
 ## 빌드 산출물 위치
 
@@ -109,6 +116,25 @@ GET /actuator/health
 ```
 
 Actuator Health는 로드 밸런서와 모니터링 시스템이 애플리케이션의 운영 상태를 확인하기 위한 엔드포인트다. 세부 내부 정보는 외부에 노출하지 않는다.
+
+## 공통 오류 응답
+
+API 오류는 `application/problem+json`으로 반환한다. RFC 9457 표준 필드에 서비스 오류 코드, 발생 시각, 필드별 검증 사유를 추가했다.
+
+```json
+{
+  "type": "urn:mydata-card-recommendation:problem:common-resource-not-found",
+  "title": "Resource Not Found",
+  "status": 404,
+  "detail": "요청한 리소스를 찾을 수 없습니다.",
+  "instance": "/api/v1/missing",
+  "code": "COMMON_RESOURCE_NOT_FOUND",
+  "timestamp": "2026-09-03T15:33:30.860763Z",
+  "fieldErrors": []
+}
+```
+
+클라이언트는 변경될 수 있는 `detail` 문장보다 안정적인 `code`를 기준으로 분기한다. 전체 규칙과 확장 방법은 [공통 오류 응답 가이드](error-response-guide.md)를 따른다.
 
 ### Readiness API
 
