@@ -40,7 +40,7 @@ docs: define product scope and initial architecture
 - [x] Health Check API
 - [x] 공통 오류 응답
 - [x] 백엔드 기본 테스트
-- [ ] CI
+- [x] CI
 
 ### 커밋 후보
 

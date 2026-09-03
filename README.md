@@ -1,5 +1,7 @@
 # MyData Card Recommendation
 
+[![CI](https://github.com/chiwonpark9/update-fintech-mydata-recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/chiwonpark9/update-fintech-mydata-recommendation/actions/workflows/ci.yml)
+
 마이데이터 기반 소비 분석을 이용해 사용자에게 적합한 카드를 추천하고, 추천 근거를 대화형으로 설명하는 B2B2C 금융 모듈 프로젝트입니다.
 
 이 프로젝트는 하나의 독립 서비스인 동시에 제휴사 홈페이지에 삽입할 수 있는 컴포넌트 형태를 목표로 합니다.
@@ -55,16 +57,18 @@
 - [ADR-0004: React 프론트엔드 기준](docs/adr/0004-react-vite-baseline.md)
 - [ADR-0005: MySQL 개발·테스트 환경](docs/adr/0005-mysql-flyway-testcontainers.md)
 - [ADR-0006: RFC 9457 공통 오류 응답](docs/adr/0006-rfc9457-error-response.md)
+- [ADR-0007: GitHub Actions CI](docs/adr/0007-github-actions-ci.md)
 - [백엔드 실행 가이드](docs/backend-guide.md)
 - [데이터베이스 실행·설계 가이드](docs/database-guide.md)
 - [공통 오류 응답 가이드](docs/error-response-guide.md)
 - [프론트엔드 실행·구조 가이드](docs/frontend-guide.md)
+- [CI 실행 가이드](docs/ci-guide.md)
 
 ## 현재 상태
 
 `Phase 1 — 실행 가능한 프로젝트 골격`
 
-Spring Boot Health API와 React 프론트엔드를 연결하고, MySQL 8.4.11 개발 환경을 Docker Compose로 구성했습니다. Flyway가 시작 시 스키마 버전 1을 적용하며 Testcontainers 통합 테스트가 실제 MySQL에서 이를 검증합니다. API 오류는 RFC 9457 Problem Details 형식에 안정적인 서비스 오류 코드와 필드별 검증 사유를 더해 통일했습니다. DB 중지 시 readiness가 HTTP 503, 복구 후 HTTP 200을 반환하는 것도 확인했습니다.
+Spring Boot Health API와 React 프론트엔드를 연결하고, MySQL 8.4.11 개발 환경을 Docker Compose로 구성했습니다. Flyway가 시작 시 스키마 버전 1을 적용하며 Testcontainers 통합 테스트가 실제 MySQL에서 이를 검증합니다. API 오류는 RFC 9457 Problem Details 형식에 안정적인 서비스 오류 코드와 필드별 검증 사유를 더해 통일했습니다. GitHub Actions는 모든 `main` 변경과 Pull Request에서 백엔드 테스트·JAR 빌드와 프론트엔드 테스트·코드 검사·빌드를 병렬로 검증합니다. DB 중지 시 readiness가 HTTP 503, 복구 후 HTTP 200을 반환하는 것도 확인했습니다.
 
 ## 로컬 실행
 
