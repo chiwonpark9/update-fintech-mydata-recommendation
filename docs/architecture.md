@@ -60,7 +60,7 @@ AI 상담사 ── 사용자 상황 해석·문서 검색·자연어 설명
 
 Spring Security는 요청을 가로채 인증·인가 규칙을 실행하는 보안 프레임워크다. JWT는 로그인 이후 사용자의 신원과 권한을 전달하는 토큰 형식이다.
 
-현재 구현은 아래 목표 흐름 중 **Spring Security 요청 경계**까지다. Health만 공개하고 나머지 요청은 인증을 요구하며, 인증 실패와 권한 부족을 각각 401과 403 Problem Details로 반환한다. 사용자 DB와 JWT는 다음 구현 단계다.
+현재 구현은 아래 목표 흐름 중 **MySQL 제휴사·회원·역할 조회와 비밀번호 검증**까지다. Health만 공개하고 나머지 요청은 인증을 요구하며, DB AuthenticationProvider가 `partnerKey + email + password`를 검증한다. 로그인 HTTP API와 JWT는 다음 구현 단계다.
 
 ```text
 로그인 요청
@@ -84,6 +84,8 @@ Spring Security가 URL·메서드 권한 확인
 - Redis는 Access Token의 일반 저장소로 사용하지 않는다.
 - 현재 서버 세션, 폼 로그인, HTTP Basic은 사용하지 않는다.
 - 쿠키 기반 토큰이나 교차 출처 Embed 정책을 도입하기 전에 CSRF·CORS를 재검토한다.
+- 회원 조회는 이메일만 사용하지 않고 제휴사 키를 함께 조건으로 사용한다.
+- `PARTNER_ADMIN`과 `PLATFORM_ADMIN`을 분리해 제휴사 운영자가 플랫폼 운영 경로에 접근하지 못하게 한다.
 
 ## 5. 데이터 원칙
 

@@ -26,8 +26,19 @@ backend/
     │   ├── java/com/chiwonpark9/cardrecommendation
     │   │   ├── CardRecommendationApplication.java
     │   │   ├── auth
-    │   │   │   ├── config/SecurityConfig.java
+    │   │   │   ├── application/port/MemberCredentialsRepository.java
+    │   │   │   ├── config
+    │   │   │   │   ├── AuthenticationConfig.java
+    │   │   │   │   └── SecurityConfig.java
+    │   │   │   ├── domain
+    │   │   │   │   ├── MemberCredentials.java
+    │   │   │   │   ├── MemberRole.java
+    │   │   │   │   └── MemberStatus.java
+    │   │   │   ├── infrastructure/JdbcMemberCredentialsRepository.java
     │   │   │   └── security
+    │   │   │       ├── DatabaseMemberAuthenticationProvider.java
+    │   │   │       ├── MemberPrincipal.java
+    │   │   │       ├── PartnerEmailPasswordAuthenticationToken.java
     │   │   │       ├── RestAuthenticationEntryPoint.java
     │   │   │       ├── RestAccessDeniedHandler.java
     │   │   │       └── SecurityErrorResponseWriter.java
@@ -37,17 +48,21 @@ backend/
     │   │   │   ├── ApiFieldError.java
     │   │   │   ├── ApiProblemDetailFactory.java
     │   │   │   └── GlobalExceptionHandler.java
+    │   │   ├── tenant/domain/PartnerStatus.java
     │   │   └── system/api
     │   │       ├── HealthController.java
     │   │       └── HealthResponse.java
     │   └── resources
     │       ├── application.yml
     │       └── db/migration
-    │           └── V1__initialize_service_metadata.sql
+    │           ├── V1__initialize_service_metadata.sql
+    │           └── V2__create_partner_member_authentication.sql
     └── test
         └── java/com/chiwonpark9/cardrecommendation
             ├── CardRecommendationApplicationTests.java
             ├── auth/config/SecurityConfigTest.java
+            ├── auth/security/DatabaseMemberAuthenticationProviderTest.java
+            ├── common/error/GlobalExceptionHandlerTest.java
             └── system/api/HealthControllerTest.java
 ```
 
@@ -62,7 +77,7 @@ cd backend
 
 전체 테스트를 실행하려면 Docker Desktop이 실행 중이어야 한다. Testcontainers는 테스트 전용 MySQL을 만들고 테스트가 끝나면 제거한다.
 
-현재 테스트는 다음을 검증한다.
+현재 전체 테스트 23개는 다음을 검증한다.
 
 - 실제 MySQL에서 Spring 애플리케이션 컨텍스트가 생성되는가
 - Flyway 마이그레이션이 실행되고 초기 데이터가 조회되는가
@@ -73,6 +88,10 @@ cd backend
 - 미인증 보호 요청은 401 공통 오류를 반환하는가
 - 인증된 일반 사용자의 관리자 경로 접근은 403 공통 오류를 반환하는가
 - 보안 실패가 세션 쿠키나 로그인 리다이렉트를 만들지 않는가
+- DB 회원이 제휴사 범위와 BCrypt 비밀번호로 인증되는가
+- 다른 제휴사, 잠긴 회원, 중지된 제휴사가 인증되지 않는가
+- 같은 제휴사의 이메일 중복을 DB가 차단하는가
+- 인증 이후 원문 비밀번호 참조가 제거되는가
 
 ## 빌드 산출물 위치
 
@@ -105,7 +124,7 @@ set +a
 SERVER_PORT=8081 ./gradlew bootRun
 ```
 
-현재는 DB 사용자와 로그인 API가 아직 없으므로 Health 외 요청에 사용할 실제 인증 수단이 없다. Spring Boot 임시 사용자를 노출하지 않도록 비어 있는 사용자 저장소를 사용하며, 다음 단계에서 DB 기반 인증으로 교체한다.
+DB 기반 회원 인증은 구현됐지만 로그인 HTTP API와 JWT는 아직 없다. 따라서 Health 외 요청에 사용할 외부 인증 수단은 없으며, 다음 단계에서 인증 성공 결과를 Access Token으로 연결한다. Spring Boot 임시 사용자는 생성되지 않는다.
 
 ## API
 
@@ -130,7 +149,7 @@ GET /api/v1/health
 | --- | --- |
 | `/api/v1/health` | 공개 |
 | `/actuator/health`, `/actuator/health/**` | 공개 |
-| `/actuator/**` | `ADMIN` 역할 |
+| `/actuator/**` | `PLATFORM_ADMIN` 역할 |
 | 나머지 모든 요청 | 인증 필요 |
 
 세션, 폼 로그인, HTTP Basic은 사용하지 않는다. 미인증 요청은 로그인 화면으로 이동하지 않고 401 Problem Details를 반환하며, 인증됐지만 권한이 부족한 요청은 403을 반환한다. 자세한 설계와 현재 제한은 [Spring Security 기준선](security-baseline.md)을 참고한다.

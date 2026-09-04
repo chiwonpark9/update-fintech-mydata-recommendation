@@ -67,7 +67,7 @@ class SecurityConfigTest {
 
 	@Test
 	void returnsProblemDetailWhenRoleIsInsufficient() throws Exception {
-		mockMvc.perform(get("/actuator/info").with(user("test-user").roles("USER")))
+		mockMvc.perform(get("/actuator/info").with(user("test-user").roles("CUSTOMER")))
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
 				.andExpect(jsonPath("$.status").value(403))

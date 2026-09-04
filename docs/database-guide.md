@@ -49,15 +49,18 @@ docker compose --env-file .env stop mysql
 - 애플리케이션 코드와 스키마 변경을 같은 커밋에서 검증한다.
 - `flyway_schema_history`로 적용 버전과 성공 여부를 추적한다.
 
-첫 마이그레이션은 `service_metadata` 테이블을 만들고 스키마가 Flyway로 초기화됐다는 확인 데이터를 저장한다.
+첫 마이그레이션은 `service_metadata` 테이블을 만들고 스키마가 Flyway로 초기화됐다는 확인 데이터를 저장한다. 두 번째 마이그레이션은 `partners`, `members`, `member_roles`와 제휴사별 이메일 유일 제약, 상태·역할 CHECK 제약, 외래 키를 생성한다.
+
+운영 마이그레이션에는 제휴사나 회원 샘플을 넣지 않는다. 고정된 데모 비밀번호가 운영 환경에 함께 적용되는 위험을 피하고, 합성 데이터는 별도 생성 과정으로 관리하기 위해서다. 자세한 인증 모델은 [MySQL 기반 회원 인증](database-authentication.md)을 참고한다.
 
 ## 검증 결과
 
 1. Compose MySQL이 `healthy`가 된 뒤 Spring Boot가 연결됐다.
-2. Flyway가 빈 스키마에 버전 1을 적용했다.
-3. Testcontainers 통합 테스트가 초기 데이터를 실제 MySQL에서 조회했다.
-4. 실행 중 MySQL을 중지하자 readiness가 HTTP 503을 반환했다.
-5. MySQL 재시작 후 readiness가 HTTP 200으로 복구됐다.
+2. Flyway가 빈 스키마에 버전 1과 버전 2를 순서대로 적용했다.
+3. 보존 중이던 개발 DB도 버전 1에서 버전 2로 실제 승격했다.
+4. Testcontainers 통합 테스트가 인증 테이블과 제약 조건을 실제 MySQL에서 검증했다.
+5. 실행 중 MySQL을 중지하자 readiness가 HTTP 503을 반환했다.
+6. MySQL 재시작 후 readiness가 HTTP 200으로 복구됐다.
 
 이 단계는 DB 장애를 자동 복구한 것이 아니라, 트래픽을 받을 수 없는 상태를 운영 시스템이 탐지할 수 있게 만든 것이다.
 

@@ -14,7 +14,7 @@ JWT를 발급하기 전에 먼저 모든 HTTP 요청이 통과할 보안 경계�
 | --- | --- | --- |
 | `GET /api/v1/health` | 공개 | 인증 없이 200 |
 | `/actuator/health`, `/actuator/health/**` | 공개 | 로드 밸런서와 상태 검사에서 사용 |
-| `/actuator/**` | `ADMIN` 역할 필요 | 미인증 401, 일반 사용자 403 |
+| `/actuator/**` | `PLATFORM_ADMIN` 역할 필요 | 미인증 401, 일반 사용자 403 |
 | 그 외 모든 요청 | 인증 필요 | 현재 미인증 요청은 401 |
 
 ERROR와 FORWARD 디스패치는 오류 처리 과정이 다시 인증에 막히지 않도록 허용한다. 공개 경로도 Security Filter Chain 자체를 우회시키지 않고 `permitAll`로 통과시켜 기본 보안 헤더를 유지한다.
@@ -52,7 +52,8 @@ SecurityFilterChain
 | `RestAccessDeniedHandler` | 인증됐지만 권한이 부족한 요청을 403으로 변환 |
 | `SecurityErrorResponseWriter` | 보안 실패를 `application/problem+json`으로 직렬화 |
 | `ApiProblemDetailFactory` | MVC와 Security에서 동일한 오류 본문 생성 |
-| `emptyUserDetailsService` | 계정 구현 전 Boot의 임시 기본 사용자 자동 생성을 막는 과도기 구성 |
+| `AuthenticationManager` | DB 인증 Provider를 호출하는 공통 인증 진입점 |
+| `DatabaseMemberAuthenticationProvider` | 제휴사·회원 조회와 비밀번호·상태·역할 검증 |
 
 ## 상태 저장과 브라우저 보안 결정
 
@@ -83,24 +84,24 @@ CORS도 아직 전체 허용하지 않는다. Embed SDK 단계에서 등록된 �
 
 ## 검증 결과
 
-- 백엔드 전체 테스트 14개 통과
+- Phase 2B까지 백엔드 전체 테스트 23개 통과
 - 실제 MySQL 8.4 연결과 Flyway 스키마 검증 통과
 - 실행 JAR 생성 성공
 - 실제 서버에서 애플리케이션 Health와 Actuator Health가 인증 없이 200
 - 실제 서버에서 일반 보호 API와 관리자 Actuator가 미인증 시 401
-- MockMvc에서 인증된 일반 사용자의 관리자 Actuator 접근이 403
+- MockMvc에서 인증된 일반 사용자의 플랫폼 운영자 Actuator 접근이 403
 - 401·403 응답이 `application/problem+json`과 공통 확장 필드를 유지
 - 공개 요청에도 `X-Content-Type-Options`, `X-Frame-Options`, 캐시 방지 헤더 적용 확인
 - 세션 쿠키와 로그인 리다이렉트가 생성되지 않음을 확인
 
 ## 현재 한계와 다음 단계
 
-- 실제 사용자 계정과 비밀번호 검증이 없다.
+- MySQL 제휴사·회원·역할과 비밀번호 검증은 구현됐지만 회원 생성 API는 없다.
 - JWT 발급·검증·갱신·폐기가 없다.
 - 실제 인증으로 403을 재현하는 E2E 흐름은 아직 없다.
 - 제휴사별 권한과 데이터 범위가 아직 없다.
 
-다음 단계에서는 MySQL에 사용자와 역할 모델을 만들고 BCrypt로 비밀번호를 안전하게 저장한 뒤 로그인 인증을 구현한다. 그 다음 JWT Access·Refresh Token을 연결한다.
+DB 인증 기반의 상세 설계와 검증은 [MySQL 기반 회원 인증](database-authentication.md)에 기록했다. 다음 단계에서는 로그인 HTTP API와 JWT Access Token을 연결한다.
 
 ## 참고 자료
 

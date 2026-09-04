@@ -59,8 +59,10 @@
 - [ADR-0006: RFC 9457 공통 오류 응답](docs/adr/0006-rfc9457-error-response.md)
 - [ADR-0007: GitHub Actions CI](docs/adr/0007-github-actions-ci.md)
 - [ADR-0008: Spring Security 요청 경계](docs/adr/0008-spring-security-baseline.md)
+- [ADR-0009: 제휴사 범위를 포함한 DB 인증](docs/adr/0009-database-backed-partner-authentication.md)
 - [백엔드 실행 가이드](docs/backend-guide.md)
 - [데이터베이스 실행·설계 가이드](docs/database-guide.md)
+- [MySQL 기반 회원 인증](docs/database-authentication.md)
 - [공통 오류 응답 가이드](docs/error-response-guide.md)
 - [Spring Security 기준선](docs/security-baseline.md)
 - [프론트엔드 실행·구조 가이드](docs/frontend-guide.md)
@@ -70,7 +72,7 @@
 
 `Phase 2 — 인증과 제휴사 경계 진행 중`
 
-Phase 1의 실행 가능한 Spring Boot·React·MySQL 골격과 CI를 완료했습니다. Phase 2에서는 JWT보다 먼저 Spring Security 요청 경계를 만들었습니다. Health만 공개하고 나머지는 기본적으로 인증을 요구하며, 인증 실패 401과 권한 부족 403도 기존 RFC 9457 오류 계약으로 통일했습니다. 세션·폼 로그인·HTTP Basic을 사용하지 않는 API 기준선을 실제 서버와 백엔드 14개 테스트로 검증했습니다. 다음 작업은 MySQL 사용자·역할 모델과 비밀번호 해싱, 로그인 인증입니다.
+Phase 1의 실행 가능한 Spring Boot·React·MySQL 골격과 CI를 완료했습니다. Phase 2에서는 Spring Security 요청 경계에 이어 MySQL 기반 제휴사·회원·역할 모델과 DB 인증 기반을 구축했습니다. `partnerKey + email + password`를 전용 AuthenticationProvider가 검증하며, 비밀번호는 알고리즘 식별자가 붙은 BCrypt 해시로만 저장합니다. 교차 제휴사 접근, 잠긴 회원, 중지된 제휴사, 중복 이메일을 포함한 전체 백엔드 테스트 23개가 통과했습니다. 다음 작업은 로그인 HTTP API와 JWT Access Token입니다.
 
 ## 로컬 실행
 

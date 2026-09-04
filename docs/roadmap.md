@@ -66,8 +66,9 @@ ci: verify frontend and backend on pull requests
 - [x] Stateless 세션 정책
 - [x] 401·403 RFC 9457 공통 오류 응답
 - [x] 인증·인가 경계 테스트
-- [ ] MySQL 사용자·역할 모델
-- [ ] BCrypt 비밀번호 해싱과 로그인 인증
+- [x] MySQL 제휴사·사용자·역할 모델
+- [x] BCrypt 비밀번호 해싱과 DB 자격 증명 인증
+- [ ] 로그인 HTTP API와 요청 검증
 - [ ] JWT Access Token 발급·검증
 - [ ] Refresh Token 회전·폐기
 - [ ] 제휴사별 데이터 접근 제한

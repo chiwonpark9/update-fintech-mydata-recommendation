@@ -13,7 +13,7 @@
 
 - Spring Security Filter Chain을 먼저 도입한다.
 - 애플리케이션 Health와 Actuator Health만 공개한다.
-- 다른 Actuator 엔드포인트는 `ADMIN`, 그 외 요청은 인증을 요구한다.
+- 다른 Actuator 엔드포인트는 플랫폼 운영자 역할, 그 외 요청은 인증을 요구한다.
 - 세션 정책은 stateless로 설정한다.
 - 폼 로그인, HTTP Basic, 로그아웃, 요청 캐시는 비활성화한다.
 - 계정 구현 전에는 비어 있는 `UserDetailsService`를 제공해 임시 기본 사용자를 만들지 않는다.
@@ -79,3 +79,7 @@
 - Refresh Token을 쿠키로 전달할 때
 - Embed SDK의 허용 Origin과 브라우저 저장 방식을 확정할 때
 - 운영용 Actuator 접근을 별도 포트나 내부 네트워크로 분리할 때
+
+## 후속 변경
+
+2026-09-04 Phase 2B에서 비어 있는 `UserDetailsService`를 DB 기반 `AuthenticationProvider`로 교체했다. 플랫폼 운영자와 제휴사 운영자의 권한을 분리하기 위해 Actuator 역할 이름도 `PLATFORM_ADMIN`으로 구체화했다. 결정 배경은 [ADR-0009](0009-database-backed-partner-authentication.md)에 기록한다.
