@@ -32,7 +32,7 @@ class GlobalExceptionHandlerTest {
 	@BeforeEach
 	void setUp() {
 		mockMvc = MockMvcBuilders.standaloneSetup(new TestErrorController())
-				.setControllerAdvice(new GlobalExceptionHandler())
+				.setControllerAdvice(new GlobalExceptionHandler(new ApiProblemDetailFactory()))
 				.build();
 	}
 

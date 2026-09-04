@@ -1,10 +1,8 @@
 package com.chiwonpark9.cardrecommendation.common.error;
 
 import java.net.URI;
-import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +29,12 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-	private static final String PROBLEM_TYPE_PREFIX = "urn:mydata-card-recommendation:problem:";
 	private static final String DEFAULT_VALIDATION_REASON = "올바른 값을 입력해주세요.";
+	private final ApiProblemDetailFactory problemDetailFactory;
+
+	public GlobalExceptionHandler(ApiProblemDetailFactory problemDetailFactory) {
+		this.problemDetailFactory = problemDetailFactory;
+	}
 
 	@ExceptionHandler(ApiException.class)
 	public ResponseEntity<Object> handleApiException(ApiException exception, WebRequest request) {
@@ -142,13 +144,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			WebRequest request,
 			List<ApiFieldError> fieldErrors
 	) {
-		ProblemDetail problem = ProblemDetail.forStatusAndDetail(errorCode.status(), errorCode.detail());
-		problem.setType(problemType(errorCode));
-		problem.setTitle(errorCode.title());
-		problem.setInstance(requestUri(request));
-		problem.setProperty("code", errorCode.code());
-		problem.setProperty("timestamp", Instant.now().toString());
-		problem.setProperty("fieldErrors", fieldErrors);
+		ProblemDetail problem = problemDetailFactory.create(errorCode, requestUri(request), fieldErrors);
 
 		return createResponseEntity(problem, headers, errorCode.status(), request);
 	}
@@ -174,10 +170,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private Comparator<ApiFieldError> fieldErrorComparator() {
 		return Comparator.comparing(ApiFieldError::field).thenComparing(ApiFieldError::reason);
-	}
-
-	private URI problemType(ApiErrorCode errorCode) {
-		return URI.create(PROBLEM_TYPE_PREFIX + errorCode.code().toLowerCase(Locale.ROOT).replace('_', '-'));
 	}
 
 	private URI requestUri(WebRequest request) {

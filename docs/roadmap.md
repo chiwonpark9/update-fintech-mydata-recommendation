@@ -53,11 +53,34 @@ ci: verify frontend and backend on pull requests
 
 ## Phase 2. 인증과 제휴사 경계
 
-- Spring Security 인증 흐름
-- JWT Access·Refresh Token
-- 역할 기반 권한
-- 제휴사별 데이터 접근 제한
-- 인증·인가 통합 테스트
+### 단계 목표
+
+- 인증과 인가의 차이를 코드와 HTTP 응답으로 설명한다.
+- 사용자 신원과 제휴사 데이터 범위를 신뢰할 수 있게 전달한다.
+- 토큰 탈취·재사용·만료 상황의 대응 기준을 만든다.
+
+### 구현
+
+- [x] Spring Security Filter Chain과 기본 보호 정책
+- [x] 공개 Health와 관리자 Actuator 접근 규칙
+- [x] Stateless 세션 정책
+- [x] 401·403 RFC 9457 공통 오류 응답
+- [x] 인증·인가 경계 테스트
+- [ ] MySQL 사용자·역할 모델
+- [ ] BCrypt 비밀번호 해싱과 로그인 인증
+- [ ] JWT Access Token 발급·검증
+- [ ] Refresh Token 회전·폐기
+- [ ] 제휴사별 데이터 접근 제한
+- [ ] 실제 로그인부터 권한 확인까지 통합 테스트
+
+### 커밋 후보
+
+```text
+feat: establish Spring Security baseline
+feat: add database-backed member authentication
+feat: issue and rotate JWT tokens
+feat: enforce tenant-scoped authorization
+```
 
 ## Phase 3. 합성 마이데이터
 

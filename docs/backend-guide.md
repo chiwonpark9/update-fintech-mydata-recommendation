@@ -6,6 +6,7 @@
 - Spring Boot 4.1.1
 - Gradle 9.7.1 Wrapper
 - Spring Web MVC
+- Spring Security
 - Spring Boot Actuator
 - Jakarta Validation
 - Spring JDBC와 HikariCP
@@ -24,10 +25,17 @@ backend/
     ├── main
     │   ├── java/com/chiwonpark9/cardrecommendation
     │   │   ├── CardRecommendationApplication.java
+    │   │   ├── auth
+    │   │   │   ├── config/SecurityConfig.java
+    │   │   │   └── security
+    │   │   │       ├── RestAuthenticationEntryPoint.java
+    │   │   │       ├── RestAccessDeniedHandler.java
+    │   │   │       └── SecurityErrorResponseWriter.java
     │   │   ├── common/error
     │   │   │   ├── ApiErrorCode.java
     │   │   │   ├── ApiException.java
     │   │   │   ├── ApiFieldError.java
+    │   │   │   ├── ApiProblemDetailFactory.java
     │   │   │   └── GlobalExceptionHandler.java
     │   │   └── system/api
     │   │       ├── HealthController.java
@@ -39,6 +47,7 @@ backend/
     └── test
         └── java/com/chiwonpark9/cardrecommendation
             ├── CardRecommendationApplicationTests.java
+            ├── auth/config/SecurityConfigTest.java
             └── system/api/HealthControllerTest.java
 ```
 
@@ -60,6 +69,10 @@ cd backend
 - Health Controller가 HTTP 200과 약속한 JSON을 반환하는가
 - 검증 실패, 잘못된 JSON, 404, 405, 415와 예상 밖 오류가 같은 계약으로 반환되는가
 - 내부 예외 정보가 HTTP 500 응답에 노출되지 않는가
+- 공개 Health는 인증 없이 접근할 수 있는가
+- 미인증 보호 요청은 401 공통 오류를 반환하는가
+- 인증된 일반 사용자의 관리자 경로 접근은 403 공통 오류를 반환하는가
+- 보안 실패가 세션 쿠키나 로그인 리다이렉트를 만들지 않는가
 
 ## 빌드 산출물 위치
 
@@ -92,6 +105,8 @@ set +a
 SERVER_PORT=8081 ./gradlew bootRun
 ```
 
+현재는 DB 사용자와 로그인 API가 아직 없으므로 Health 외 요청에 사용할 실제 인증 수단이 없다. Spring Boot 임시 사용자를 노출하지 않도록 비어 있는 사용자 저장소를 사용하며, 다음 단계에서 DB 기반 인증으로 교체한다.
+
 ## API
 
 ### 애플리케이션 Health API
@@ -108,6 +123,17 @@ GET /api/v1/health
 ```
 
 이 API는 프론트엔드와 백엔드가 정상적으로 통신하는지 확인하는 애플리케이션 계약이다.
+
+## 보안 접근 규칙
+
+| 경로 | 접근 조건 |
+| --- | --- |
+| `/api/v1/health` | 공개 |
+| `/actuator/health`, `/actuator/health/**` | 공개 |
+| `/actuator/**` | `ADMIN` 역할 |
+| 나머지 모든 요청 | 인증 필요 |
+
+세션, 폼 로그인, HTTP Basic은 사용하지 않는다. 미인증 요청은 로그인 화면으로 이동하지 않고 401 Problem Details를 반환하며, 인증됐지만 권한이 부족한 요청은 403을 반환한다. 자세한 설계와 현재 제한은 [Spring Security 기준선](security-baseline.md)을 참고한다.
 
 ### Actuator Health API
 

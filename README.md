@@ -58,17 +58,19 @@
 - [ADR-0005: MySQL 개발·테스트 환경](docs/adr/0005-mysql-flyway-testcontainers.md)
 - [ADR-0006: RFC 9457 공통 오류 응답](docs/adr/0006-rfc9457-error-response.md)
 - [ADR-0007: GitHub Actions CI](docs/adr/0007-github-actions-ci.md)
+- [ADR-0008: Spring Security 요청 경계](docs/adr/0008-spring-security-baseline.md)
 - [백엔드 실행 가이드](docs/backend-guide.md)
 - [데이터베이스 실행·설계 가이드](docs/database-guide.md)
 - [공통 오류 응답 가이드](docs/error-response-guide.md)
+- [Spring Security 기준선](docs/security-baseline.md)
 - [프론트엔드 실행·구조 가이드](docs/frontend-guide.md)
 - [CI 실행 가이드](docs/ci-guide.md)
 
 ## 현재 상태
 
-`Phase 1 — 실행 가능한 프로젝트 골격`
+`Phase 2 — 인증과 제휴사 경계 진행 중`
 
-Spring Boot Health API와 React 프론트엔드를 연결하고, MySQL 8.4.11 개발 환경을 Docker Compose로 구성했습니다. Flyway가 시작 시 스키마 버전 1을 적용하며 Testcontainers 통합 테스트가 실제 MySQL에서 이를 검증합니다. API 오류는 RFC 9457 Problem Details 형식에 안정적인 서비스 오류 코드와 필드별 검증 사유를 더해 통일했습니다. GitHub Actions는 모든 `main` 변경과 Pull Request에서 백엔드 테스트·JAR 빌드와 프론트엔드 테스트·코드 검사·빌드를 병렬로 검증합니다. DB 중지 시 readiness가 HTTP 503, 복구 후 HTTP 200을 반환하는 것도 확인했습니다.
+Phase 1의 실행 가능한 Spring Boot·React·MySQL 골격과 CI를 완료했습니다. Phase 2에서는 JWT보다 먼저 Spring Security 요청 경계를 만들었습니다. Health만 공개하고 나머지는 기본적으로 인증을 요구하며, 인증 실패 401과 권한 부족 403도 기존 RFC 9457 오류 계약으로 통일했습니다. 세션·폼 로그인·HTTP Basic을 사용하지 않는 API 기준선을 실제 서버와 백엔드 14개 테스트로 검증했습니다. 다음 작업은 MySQL 사용자·역할 모델과 비밀번호 해싱, 로그인 인증입니다.
 
 ## 로컬 실행
 

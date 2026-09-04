@@ -23,6 +23,18 @@ public enum ApiErrorCode {
 			"Resource Not Found",
 			"요청한 리소스를 찾을 수 없습니다."
 	),
+	AUTHENTICATION_REQUIRED(
+			"AUTH_AUTHENTICATION_REQUIRED",
+			HttpStatus.UNAUTHORIZED,
+			"Authentication Required",
+			"인증이 필요합니다."
+	),
+	ACCESS_DENIED(
+			"AUTH_ACCESS_DENIED",
+			HttpStatus.FORBIDDEN,
+			"Access Denied",
+			"접근 권한이 없습니다."
+	),
 	METHOD_NOT_ALLOWED(
 			"COMMON_METHOD_NOT_ALLOWED",
 			HttpStatus.METHOD_NOT_ALLOWED,
@@ -72,6 +84,8 @@ public enum ApiErrorCode {
 
 	public static ApiErrorCode from(HttpStatusCode status) {
 		return switch (status.value()) {
+			case 401 -> AUTHENTICATION_REQUIRED;
+			case 403 -> ACCESS_DENIED;
 			case 404 -> RESOURCE_NOT_FOUND;
 			case 405 -> METHOD_NOT_ALLOWED;
 			case 415 -> UNSUPPORTED_MEDIA_TYPE;
