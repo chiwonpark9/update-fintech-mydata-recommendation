@@ -7,6 +7,7 @@
 - Gradle 9.7.1 Wrapper
 - Spring Web MVC
 - Spring Security
+- Spring Security OAuth2 Resource Server와 JWT
 - Spring Boot Actuator
 - Jakarta Validation
 - Spring JDBC와 HikariCP
@@ -26,9 +27,20 @@ backend/
     │   ├── java/com/chiwonpark9/cardrecommendation
     │   │   ├── CardRecommendationApplication.java
     │   │   ├── auth
-    │   │   │   ├── application/port/MemberCredentialsRepository.java
+    │   │   │   ├── api
+    │   │   │   │   ├── AuthController.java
+    │   │   │   │   ├── LoginRequest.java
+    │   │   │   │   ├── LoginResponse.java
+    │   │   │   │   └── CurrentMemberResponse.java
+    │   │   │   ├── application
+    │   │   │   │   ├── LoginCommand.java
+    │   │   │   │   ├── LoginResult.java
+    │   │   │   │   ├── LoginService.java
+    │   │   │   │   └── port/MemberCredentialsRepository.java
     │   │   │   ├── config
     │   │   │   │   ├── AuthenticationConfig.java
+    │   │   │   │   ├── JwtConfig.java
+    │   │   │   │   ├── JwtProperties.java
     │   │   │   │   └── SecurityConfig.java
     │   │   │   ├── domain
     │   │   │   │   ├── MemberCredentials.java
@@ -37,6 +49,7 @@ backend/
     │   │   │   ├── infrastructure/JdbcMemberCredentialsRepository.java
     │   │   │   └── security
     │   │   │       ├── DatabaseMemberAuthenticationProvider.java
+    │   │   │       ├── JwtAccessTokenService.java
     │   │   │       ├── MemberPrincipal.java
     │   │   │       ├── PartnerEmailPasswordAuthenticationToken.java
     │   │   │       ├── RestAuthenticationEntryPoint.java
@@ -60,6 +73,9 @@ backend/
     └── test
         └── java/com/chiwonpark9/cardrecommendation
             ├── CardRecommendationApplicationTests.java
+            ├── auth/api/AuthControllerTest.java
+            ├── auth/application/LoginServiceTest.java
+            ├── auth/config/JwtConfigTest.java
             ├── auth/config/SecurityConfigTest.java
             ├── auth/security/DatabaseMemberAuthenticationProviderTest.java
             ├── common/error/GlobalExceptionHandlerTest.java
@@ -77,7 +93,7 @@ cd backend
 
 전체 테스트를 실행하려면 Docker Desktop이 실행 중이어야 한다. Testcontainers는 테스트 전용 MySQL을 만들고 테스트가 끝나면 제거한다.
 
-현재 전체 테스트 23개는 다음을 검증한다.
+현재 전체 테스트 41개는 다음을 검증한다.
 
 - 실제 MySQL에서 Spring 애플리케이션 컨텍스트가 생성되는가
 - Flyway 마이그레이션이 실행되고 초기 데이터가 조회되는가
@@ -92,6 +108,11 @@ cd backend
 - 다른 제휴사, 잠긴 회원, 중지된 제휴사가 인증되지 않는가
 - 같은 제휴사의 이메일 중복을 DB가 차단하는가
 - 인증 이후 원문 비밀번호 참조가 제거되는가
+- 로그인 입력 검증과 비밀번호 로그 마스킹이 동작하는가
+- RS256으로 서명하고 공개 키로 검증하는가
+- issuer, audience, 만료, 회원·제휴사·역할 claim을 검증하는가
+- DB 로그인부터 Bearer 보호 API까지 전체 흐름이 동작하는가
+- 변조된 Access Token이 공통 401로 거부되는가
 
 ## 빌드 산출물 위치
 
@@ -105,6 +126,7 @@ cd backend
 
 ```bash
 cp .env.example .env
+./scripts/generate-local-jwt-keys.sh
 docker compose --env-file .env up -d --wait mysql
 ```
 
@@ -114,6 +136,7 @@ docker compose --env-file .env up -d --wait mysql
 cd backend
 set -a
 source ../.env
+source ../.env.jwt.local
 set +a
 ./gradlew bootRun
 ```
@@ -124,7 +147,7 @@ set +a
 SERVER_PORT=8081 ./gradlew bootRun
 ```
 
-DB 기반 회원 인증은 구현됐지만 로그인 HTTP API와 JWT는 아직 없다. 따라서 Health 외 요청에 사용할 외부 인증 수단은 없으며, 다음 단계에서 인증 성공 결과를 Access Token으로 연결한다. Spring Boot 임시 사용자는 생성되지 않는다.
+DB 기반 로그인 API와 RS256 JWT Access Token 발급·검증이 구현됐다. 실제 회원 데이터는 운영 마이그레이션에 넣지 않으므로 로그인하려면 별도 회원 생성 과정이 필요하다. 현재는 통합 테스트가 테스트 전용 회원을 트랜잭션 안에서 생성하고 제거한다. 자세한 키 생성과 토큰 구조는 [로그인 API와 JWT Access Token](jwt-authentication.md)을 참고한다.
 
 ## API
 
@@ -143,11 +166,37 @@ GET /api/v1/health
 
 이 API는 프론트엔드와 백엔드가 정상적으로 통신하는지 확인하는 애플리케이션 계약이다.
 
+### 로그인 API
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "partnerKey": "woori-card",
+  "email": "user@example.com",
+  "password": "correct-password"
+}
+```
+
+DB 인증에 성공하면 `Bearer` Access Token, 900초 기본 만료, 로그인 회원 요약을 반환한다. 실패 원인을 구분해 노출하지 않고 `AUTH_INVALID_CREDENTIALS` 401을 반환한다.
+
+### 현재 인증 정보 API
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <access-token>
+```
+
+검증된 토큰에서 회원 ID, 제휴사 ID·키와 역할을 반환한다. 토큰이 없거나 유효하지 않으면 `AUTH_AUTHENTICATION_REQUIRED` 401을 반환한다.
+
 ## 보안 접근 규칙
 
 | 경로 | 접근 조건 |
 | --- | --- |
 | `/api/v1/health` | 공개 |
+| `POST /api/v1/auth/login` | 공개, 자격 증명 검증 |
+| `GET /api/v1/auth/me` | 유효한 Bearer Access Token |
 | `/actuator/health`, `/actuator/health/**` | 공개 |
 | `/actuator/**` | `PLATFORM_ADMIN` 역할 |
 | 나머지 모든 요청 | 인증 필요 |

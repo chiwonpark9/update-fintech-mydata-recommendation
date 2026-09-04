@@ -10,9 +10,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -32,6 +39,10 @@ class SecurityConfigTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+	@MockitoBean
+	private JwtDecoder jwtDecoder;
+	@MockitoBean
+	private JwtAuthenticationConverter jwtAuthenticationConverter;
 
 	@Test
 	void allowsPublicHealthRequestWithoutAuthentication() throws Exception {
@@ -47,6 +58,7 @@ class SecurityConfigTest {
 				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
 				.andExpect(header().doesNotExist("Location"))
 				.andExpect(header().doesNotExist("Set-Cookie"))
+				.andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"))
 				.andExpect(jsonPath("$.type")
 						.value("urn:mydata-card-recommendation:problem:auth-authentication-required"))
 				.andExpect(jsonPath("$.status").value(401))
@@ -54,6 +66,21 @@ class SecurityConfigTest {
 				.andExpect(jsonPath("$.instance").value("/api/v1/missing"))
 				.andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_REQUIRED"))
 				.andExpect(jsonPath("$.timestamp").isNotEmpty())
+				.andExpect(jsonPath("$.fieldErrors", hasSize(0)));
+	}
+
+	@Test
+	void returnsSameProblemDetailForInvalidBearerToken() throws Exception {
+		given(jwtDecoder.decode("invalid-token"))
+				.willThrow(new BadJwtException("internal token reason"));
+
+		mockMvc.perform(get("/api/v1/missing")
+					.header(AUTHORIZATION, "Bearer invalid-token"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+				.andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"))
+				.andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_REQUIRED"))
+				.andExpect(jsonPath("$.detail").value("인증이 필요합니다."))
 				.andExpect(jsonPath("$.fieldErrors", hasSize(0)));
 	}
 

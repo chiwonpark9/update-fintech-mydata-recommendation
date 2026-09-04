@@ -29,3 +29,13 @@ management:
       group:
         readiness:
           include: readinessState,db
+
+app:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://mydata-card-recommendation.local}
+      audience: ${JWT_AUDIENCE:mydata-card-recommendation-clients}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      key-id: ${JWT_KEY_ID:primary}
+      public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
+      private-key-base64: ${JWT_PRIVATE_KEY_BASE64}

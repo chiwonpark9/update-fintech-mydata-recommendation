@@ -60,9 +60,11 @@
 - [ADR-0007: GitHub Actions CI](docs/adr/0007-github-actions-ci.md)
 - [ADR-0008: Spring Security 요청 경계](docs/adr/0008-spring-security-baseline.md)
 - [ADR-0009: 제휴사 범위를 포함한 DB 인증](docs/adr/0009-database-backed-partner-authentication.md)
+- [ADR-0010: RS256 JWT Access Token](docs/adr/0010-rs256-jwt-access-token.md)
 - [백엔드 실행 가이드](docs/backend-guide.md)
 - [데이터베이스 실행·설계 가이드](docs/database-guide.md)
 - [MySQL 기반 회원 인증](docs/database-authentication.md)
+- [로그인 API와 JWT Access Token](docs/jwt-authentication.md)
 - [공통 오류 응답 가이드](docs/error-response-guide.md)
 - [Spring Security 기준선](docs/security-baseline.md)
 - [프론트엔드 실행·구조 가이드](docs/frontend-guide.md)
@@ -72,7 +74,7 @@
 
 `Phase 2 — 인증과 제휴사 경계 진행 중`
 
-Phase 1의 실행 가능한 Spring Boot·React·MySQL 골격과 CI를 완료했습니다. Phase 2에서는 Spring Security 요청 경계에 이어 MySQL 기반 제휴사·회원·역할 모델과 DB 인증 기반을 구축했습니다. `partnerKey + email + password`를 전용 AuthenticationProvider가 검증하며, 비밀번호는 알고리즘 식별자가 붙은 BCrypt 해시로만 저장합니다. 교차 제휴사 접근, 잠긴 회원, 중지된 제휴사, 중복 이메일을 포함한 전체 백엔드 테스트 23개가 통과했습니다. 다음 작업은 로그인 HTTP API와 JWT Access Token입니다.
+Phase 1의 실행 가능한 Spring Boot·React·MySQL 골격과 CI를 완료했습니다. Phase 2에서는 Spring Security 요청 경계, MySQL 제휴사·회원·역할 인증, 로그인 API와 RS256 JWT Access Token 발급·검증까지 연결했습니다. 토큰은 15분 동안 유효하며 회원 ID, 제휴사 경계와 역할만 포함합니다. 로그인부터 Bearer 보호 API, 만료·변조·잘못된 issuer·audience 검증을 포함한 전체 백엔드 테스트 41개가 통과했습니다. 다음 작업은 Refresh Token 회전·폐기와 제휴사별 업무 데이터 접근 제한입니다.
 
 ## 로컬 실행
 
@@ -82,6 +84,7 @@ Phase 1의 실행 가능한 Spring Boot·React·MySQL 골격과 CI를 완료했�
 
 ```bash
 cp .env.example .env
+./scripts/generate-local-jwt-keys.sh
 docker compose --env-file .env up -d --wait mysql
 ```
 
@@ -91,6 +94,7 @@ docker compose --env-file .env up -d --wait mysql
 cd backend
 set -a
 source ../.env
+source ../.env.jwt.local
 set +a
 ./gradlew test
 ./gradlew bootRun

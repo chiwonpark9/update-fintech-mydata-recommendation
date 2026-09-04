@@ -2,29 +2,47 @@ package com.chiwonpark9.cardrecommendation;
 
 import com.chiwonpark9.cardrecommendation.auth.security.MemberPrincipal;
 import com.chiwonpark9.cardrecommendation.auth.security.PartnerEmailPasswordAuthenticationToken;
+import com.chiwonpark9.cardrecommendation.auth.support.TestRsaKeys;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.contains;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Testcontainers
 @SpringBootTest
+@AutoConfigureMockMvc
 @Transactional
 class CardRecommendationApplicationTests {
+
+	private static final TestRsaKeys JWT_KEYS = TestRsaKeys.shared();
 
 	@Container
 	@ServiceConnection
@@ -39,6 +57,14 @@ class CardRecommendationApplicationTests {
 	private AuthenticationManager authenticationManager;
 	@Autowired
 	private PasswordEncoder passwordEncoder;
+	@Autowired
+	private MockMvc mockMvc;
+
+	@DynamicPropertySource
+	static void jwtProperties(DynamicPropertyRegistry registry) {
+		registry.add("app.security.jwt.public-key-base64", JWT_KEYS::publicKeyBase64);
+		registry.add("app.security.jwt.private-key-base64", JWT_KEYS::privateKeyBase64);
+	}
 
 	@Test
 	void contextLoadsAndAppliesFlywayMigration() {
@@ -186,6 +212,115 @@ class CardRecommendationApplicationTests {
 				"중복 회원",
 				"ACTIVE"
 		)).isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void logsInWithDatabaseCredentialsAndUsesAccessTokenForProtectedRequest() throws Exception {
+		long partnerId = insertPartner("jwt-card", "JWT 카드사", "ACTIVE");
+		long memberId = insertMember(
+				partnerId,
+				"jwt-user@example.com",
+				"correct-password",
+				"JWT 사용자",
+				"ACTIVE"
+		);
+		insertRole(memberId, "CUSTOMER");
+		insertRole(memberId, "PARTNER_ADMIN");
+
+		String loginResponse = mockMvc.perform(post("/api/v1/auth/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "partnerKey": "jwt-card",
+							  "email": "jwt-user@example.com",
+							  "password": "correct-password"
+							}
+							"""))
+				.andExpect(status().isOk())
+				.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+				.andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE))
+				.andExpect(jsonPath("$.tokenType").value("Bearer"))
+				.andExpect(jsonPath("$.expiresIn").value(900))
+				.andExpect(jsonPath("$.member.memberId").value(memberId))
+				.andExpect(jsonPath("$.member.partnerId").value(partnerId))
+				.andExpect(jsonPath("$.member.roles", contains("CUSTOMER", "PARTNER_ADMIN")))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+		String accessToken = JsonPath.read(loginResponse, "$.accessToken");
+
+		assertThat(accessToken.split("\\.")).hasSize(3);
+		mockMvc.perform(get("/api/v1/auth/me")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.memberId").value(memberId))
+				.andExpect(jsonPath("$.partnerId").value(partnerId))
+				.andExpect(jsonPath("$.partnerKey").value("jwt-card"))
+				.andExpect(jsonPath("$.roles", contains("CUSTOMER", "PARTNER_ADMIN")));
+	}
+
+	@Test
+	void returnsSafeProblemDetailWhenDatabaseLoginFails() throws Exception {
+		long partnerId = insertPartner("failed-login-card", "로그인 실패 카드사", "ACTIVE");
+		long memberId = insertMember(
+				partnerId,
+				"login-user@example.com",
+				"correct-password",
+				"로그인 사용자",
+				"ACTIVE"
+		);
+		insertRole(memberId, "CUSTOMER");
+
+		mockMvc.perform(post("/api/v1/auth/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "partnerKey": "failed-login-card",
+							  "email": "login-user@example.com",
+							  "password": "wrong-password"
+							}
+							"""))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+				.andExpect(jsonPath("$.code").value("AUTH_INVALID_CREDENTIALS"))
+				.andExpect(jsonPath("$.detail").value("로그인 정보가 올바르지 않습니다."));
+	}
+
+	@Test
+	void rejectsTamperedAccessTokenWithCommonSecurityError() throws Exception {
+		long partnerId = insertPartner("tamper-card", "변조 검사 카드사", "ACTIVE");
+		long memberId = insertMember(
+				partnerId,
+				"tamper@example.com",
+				"correct-password",
+				"변조 검사 사용자",
+				"ACTIVE"
+		);
+		insertRole(memberId, "CUSTOMER");
+		String loginResponse = mockMvc.perform(post("/api/v1/auth/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "partnerKey": "tamper-card",
+							  "email": "tamper@example.com",
+							  "password": "correct-password"
+							}
+							"""))
+				.andExpect(status().isOk())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+		String accessToken = JsonPath.read(loginResponse, "$.accessToken");
+		char replacement = accessToken.endsWith("A") ? 'B' : 'A';
+		String tamperedToken = accessToken.substring(0, accessToken.length() - 1) + replacement;
+
+		mockMvc.perform(get("/api/v1/auth/me")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + tamperedToken))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+				.andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"))
+				.andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_REQUIRED"))
+				.andExpect(jsonPath("$.detail").value("인증이 필요합니다."));
 	}
 
 	private boolean tableExists(String tableName) {

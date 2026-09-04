@@ -2,9 +2,7 @@
 
 ## 목적
 
-JWT를 발급하기 전에 먼저 모든 HTTP 요청이 통과할 보안 경계를 만든다. 이 단계에서는 공개 경로를 최소화하고, 인증·인가 실패도 다른 API 오류와 같은 RFC 9457 계약으로 응답한다.
-
-현재는 사용자 계정과 로그인 API가 아직 없으므로 토큰 인증을 구현하지 않았다. 따라서 공개 Health 경로를 제외한 실제 요청은 인증할 방법이 없으며 `401 Unauthorized`가 정상 동작이다.
+모든 HTTP 요청이 통과할 보안 경계와 Bearer Access Token 인증을 일관되게 실행한다. 공개 경로를 최소화하고, 인증·인가 실패도 다른 API 오류와 같은 RFC 9457 계약으로 응답한다.
 
 ## 현재 접근 규칙
 
@@ -13,9 +11,11 @@ JWT를 발급하기 전에 먼저 모든 HTTP 요청이 통과할 보안 경계�
 | 요청 | 규칙 | 현재 결과 |
 | --- | --- | --- |
 | `GET /api/v1/health` | 공개 | 인증 없이 200 |
+| `POST /api/v1/auth/login` | 공개 | DB 자격 증명 성공 시 Access Token 발급 |
+| `GET /api/v1/auth/me` | 인증 필요 | 유효한 Bearer JWT로 200 |
 | `/actuator/health`, `/actuator/health/**` | 공개 | 로드 밸런서와 상태 검사에서 사용 |
 | `/actuator/**` | `PLATFORM_ADMIN` 역할 필요 | 미인증 401, 일반 사용자 403 |
-| 그 외 모든 요청 | 인증 필요 | 현재 미인증 요청은 401 |
+| 그 외 모든 요청 | 인증 필요 | 토큰 없음·변조·만료 시 401 |
 
 ERROR와 FORWARD 디스패치는 오류 처리 과정이 다시 인증에 막히지 않도록 허용한다. 공개 경로도 Security Filter Chain 자체를 우회시키지 않고 `permitAll`로 통과시켜 기본 보안 헤더를 유지한다.
 
@@ -26,7 +26,7 @@ HTTP 요청
    ↓
 SecurityFilterChain
    ├─ 공개 경로 ──────────────────────→ Controller
-   ├─ 인증 정보 없음 ─→ AuthenticationEntryPoint ─→ 401 Problem Details
+   ├─ Bearer Token 없음·오류 ─→ AuthenticationEntryPoint ─→ 401 Problem Details
    └─ 인증됨
         ├─ 권한 부족 ─→ AccessDeniedHandler ──────→ 403 Problem Details
         └─ 권한 충족 ────────────────────────────→ Controller
@@ -38,7 +38,7 @@ SecurityFilterChain
 
 - Spring Security는 요청 필터, 인증 정보 보관, URL·역할 기반 인가, 실패 처리 같은 전체 보안 실행 틀이다.
 - JWT는 로그인 이후 사용자 식별자와 권한을 전달할 토큰 형식이다.
-- 다음 단계에서 JWT 검증 필터가 토큰의 서명·만료·클레임을 확인하고 인증 객체를 `SecurityContext`에 넣는다.
+- Resource Server가 JWT의 서명·만료·클레임을 확인하고 인증 객체를 `SecurityContext`에 넣는다.
 - 그 이후의 접근 허용 여부와 401·403 처리는 지금 만든 Spring Security 경계가 담당한다.
 
 둘을 단순히 섞는 것이 아니라, JWT가 인증 정보를 제공하고 Spring Security가 그 정보를 이용해 요청 전체의 인증·인가를 수행하는 관계다.
@@ -54,6 +54,10 @@ SecurityFilterChain
 | `ApiProblemDetailFactory` | MVC와 Security에서 동일한 오류 본문 생성 |
 | `AuthenticationManager` | DB 인증 Provider를 호출하는 공통 인증 진입점 |
 | `DatabaseMemberAuthenticationProvider` | 제휴사·회원 조회와 비밀번호·상태·역할 검증 |
+| `JwtAccessTokenService` | RS256 Access Token Header와 claim 생성·서명 |
+| `JwtDecoder` | 공개 키와 표준·프로젝트 claim 검증 |
+| `JwtAuthenticationConverter` | `roles` claim을 `ROLE_*` 권한으로 변환 |
+| `BearerTokenAuthenticationFilter` | Authorization Header에서 토큰 추출과 인증 시작 |
 
 ## 상태 저장과 브라우저 보안 결정
 
@@ -82,9 +86,11 @@ CORS도 아직 전체 허용하지 않는다. Embed SDK 단계에서 등록된 �
 
 권한 부족은 같은 구조로 `403`과 `AUTH_ACCESS_DENIED`를 반환한다. 비밀번호, 토큰 값, 내부 예외 메시지는 응답에 포함하지 않는다.
 
+로그인 자격 증명 실패는 `AUTH_INVALID_CREDENTIALS` 401, 보호 API의 토큰 없음·변조·만료는 `AUTH_AUTHENTICATION_REQUIRED` 401로 구분한다. 후자의 응답에는 `WWW-Authenticate: Bearer`를 포함한다.
+
 ## 검증 결과
 
-- Phase 2B까지 백엔드 전체 테스트 23개 통과
+- Phase 2C까지 백엔드 전체 테스트 41개 통과
 - 실제 MySQL 8.4 연결과 Flyway 스키마 검증 통과
 - 실행 JAR 생성 성공
 - 실제 서버에서 애플리케이션 Health와 Actuator Health가 인증 없이 200
@@ -93,15 +99,18 @@ CORS도 아직 전체 허용하지 않는다. Embed SDK 단계에서 등록된 �
 - 401·403 응답이 `application/problem+json`과 공통 확장 필드를 유지
 - 공개 요청에도 `X-Content-Type-Options`, `X-Frame-Options`, 캐시 방지 헤더 적용 확인
 - 세션 쿠키와 로그인 리다이렉트가 생성되지 않음을 확인
+- MySQL 회원 로그인부터 RS256 토큰 발급, `/me` 인증까지 통합 검증
+- 잘못된 issuer·audience·만료·역할·RSA 키 쌍 거부 확인
+- 실제 실행 JAR에서 로그인 200, Bearer `/me` 200, 변조 토큰 401 확인
 
 ## 현재 한계와 다음 단계
 
-- MySQL 제휴사·회원·역할과 비밀번호 검증은 구현됐지만 회원 생성 API는 없다.
-- JWT 발급·검증·갱신·폐기가 없다.
-- 실제 인증으로 403을 재현하는 E2E 흐름은 아직 없다.
+- 회원 생성·비밀번호 변경·계정 복구 API는 없다.
+- Refresh Token 발급·회전·폐기와 로그아웃이 없다.
+- 실제 DB 회원의 `PLATFORM_ADMIN` 토큰으로 Actuator를 호출하는 실행 점검은 아직 없다.
 - 제휴사별 권한과 데이터 범위가 아직 없다.
 
-DB 인증 기반의 상세 설계와 검증은 [MySQL 기반 회원 인증](database-authentication.md)에 기록했다. 다음 단계에서는 로그인 HTTP API와 JWT Access Token을 연결한다.
+DB 인증 기반은 [MySQL 기반 회원 인증](database-authentication.md), 토큰 발급·검증은 [로그인 API와 JWT Access Token](jwt-authentication.md)에 기록했다. 다음 인증 단계에서는 Refresh Token 회전·폐기와 Redis 저장을 다룬다.
 
 ## 참고 자료
 
@@ -109,3 +118,4 @@ DB 인증 기반의 상세 설계와 검증은 [MySQL 기반 회원 인증](data
 - [Spring Security 세션 관리](https://docs.spring.io/spring-security/reference/servlet/authentication/session-management.html)
 - [Spring Security Servlet 아키텍처](https://docs.spring.io/spring-security/reference/servlet/architecture.html)
 - [Spring Security CSRF](https://docs.spring.io/spring-security/reference/7.0/servlet/exploits/csrf.html)
+- [Spring Security OAuth2 Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/index.html)

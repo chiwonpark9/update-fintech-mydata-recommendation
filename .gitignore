@@ -13,6 +13,7 @@
 !.env.example
 *.pem
 *.key
+.local/
 
 # Backend
 backend/.gradle/

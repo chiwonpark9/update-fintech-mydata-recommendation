@@ -29,6 +29,12 @@ public enum ApiErrorCode {
 			"Authentication Required",
 			"인증이 필요합니다."
 	),
+	INVALID_CREDENTIALS(
+			"AUTH_INVALID_CREDENTIALS",
+			HttpStatus.UNAUTHORIZED,
+			"Invalid Credentials",
+			"로그인 정보가 올바르지 않습니다."
+	),
 	ACCESS_DENIED(
 			"AUTH_ACCESS_DENIED",
 			HttpStatus.FORBIDDEN,

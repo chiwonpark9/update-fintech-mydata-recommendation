@@ -113,7 +113,7 @@ BCrypt 비용 값은 아직 기본값을 사용한다. AWS 실행 환경이 정�
 
 ## 검증 결과
 
-- 전체 백엔드 테스트 23개 통과
+- Phase 2B 단독 검증 23개, Phase 2C JWT 연결 후 전체 백엔드 테스트 41개 통과
 - Testcontainers MySQL 8.4에서 Flyway V1·V2 적용 성공
 - 개발 DB를 기존 V1에서 V2로 실제 승격
 - DB 회원의 제휴사 키·이메일·비밀번호 인증 성공
@@ -129,12 +129,12 @@ BCrypt 비용 값은 아직 기본값을 사용한다. AWS 실행 환경이 정�
 ## 현재 한계와 다음 단계
 
 - 회원 생성·비밀번호 변경 API는 아직 없다.
-- 로그인 HTTP API와 JWT가 아직 없다.
+- DB 인증은 로그인 HTTP API와 RS256 JWT Access Token 발급에 연결됐다.
 - 로그인 시도 횟수 제한과 감사 로그가 아직 없다.
 - BCrypt 비용 값은 운영 환경에서 측정하지 않았다.
 - 제휴사별 실제 업무 데이터 조회 제한은 아직 없다.
 
-다음 단계에서는 로그인 DTO 검증과 오류 계약을 추가하고, 인증 성공 결과로 짧은 Access Token을 발급한다. Refresh Token의 저장·회전·재사용 탐지는 별도 단계로 분리한다.
+로그인 DTO, 오류 계약과 Access Token 연결은 [로그인 API와 JWT Access Token](jwt-authentication.md)에 기록했다. Refresh Token의 저장·회전·재사용 탐지는 별도 단계로 분리한다.
 
 ## 참고 자료
 

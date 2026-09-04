@@ -68,18 +68,19 @@ ci: verify frontend and backend on pull requests
 - [x] 인증·인가 경계 테스트
 - [x] MySQL 제휴사·사용자·역할 모델
 - [x] BCrypt 비밀번호 해싱과 DB 자격 증명 인증
-- [ ] 로그인 HTTP API와 요청 검증
-- [ ] JWT Access Token 발급·검증
+- [x] 로그인 HTTP API와 요청 검증
+- [x] RS256 JWT Access Token 발급·검증
 - [ ] Refresh Token 회전·폐기
 - [ ] 제휴사별 데이터 접근 제한
-- [ ] 실제 로그인부터 권한 확인까지 통합 테스트
+- [x] 실제 로그인부터 권한 확인까지 통합 테스트
 
 ### 커밋 후보
 
 ```text
 feat: establish Spring Security baseline
 feat: add database-backed member authentication
-feat: issue and rotate JWT tokens
+feat: issue and verify JWT access tokens
+feat: rotate and revoke refresh tokens
 feat: enforce tenant-scoped authorization
 ```
 

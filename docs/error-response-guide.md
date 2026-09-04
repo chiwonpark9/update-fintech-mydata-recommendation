@@ -54,6 +54,7 @@ Spring Framework가 지원하는 RFC 9457 Problem Details를 기본 형식으로
 | `COMMON_UNSUPPORTED_MEDIA_TYPE` | 415 | 지원하지 않는 Content-Type |
 | `COMMON_INTERNAL_SERVER_ERROR` | 500 | 예상하지 못한 서버 오류 |
 | `AUTH_AUTHENTICATION_REQUIRED` | 401 | 인증 정보가 없거나 유효하지 않음 |
+| `AUTH_INVALID_CREDENTIALS` | 401 | 로그인 정보가 일치하지 않거나 계정·제휴사가 비활성 상태 |
 | `AUTH_ACCESS_DENIED` | 403 | 인증됐지만 요청에 필요한 권한이 없음 |
 
 ## 구현 역할
@@ -77,6 +78,8 @@ HTTP 상태, 서비스 코드, 제목, 안전한 설명을 한 곳에서 관리�
 ### `RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`
 
 Spring Security Filter Chain에서 발생한 인증 실패와 권한 부족을 각각 401과 403으로 변환한다. 보안 필터는 MVC보다 먼저 동작하므로 이 오류들은 `GlobalExceptionHandler`에서 처리할 수 없다.
+
+보호 API의 인증 정보가 없거나 Bearer Token이 유효하지 않으면 내부 JWT 오류를 숨긴 `AUTH_AUTHENTICATION_REQUIRED`를 반환하고 `WWW-Authenticate: Bearer` Header를 포함한다. 로그인 요청의 자격 증명 실패는 MVC 애플리케이션 흐름에서 `AUTH_INVALID_CREDENTIALS`로 변환한다.
 
 ### `SecurityErrorResponseWriter`
 
@@ -115,6 +118,8 @@ Spring Security Filter Chain에서 발생한 인증 실패와 권한 부족을 �
 - 정상 Health API 응답은 변경되지 않는가
 - 인증 정보가 없으면 401과 `AUTH_AUTHENTICATION_REQUIRED`가 반환되는가
 - 인증됐지만 권한이 부족하면 403과 `AUTH_ACCESS_DENIED`가 반환되는가
+- 잘못된 로그인 정보는 원인을 구분하지 않고 `AUTH_INVALID_CREDENTIALS`를 반환하는가
+- 변조·만료된 Bearer Token은 `AUTH_AUTHENTICATION_REQUIRED`를 반환하는가
 - 보안 오류에도 리다이렉트와 세션 쿠키가 생기지 않는가
 
 Spring Security 적용 후 실제 서버에서 익명 보호 경로는 401, 공개 Health는 200으로 확인했다. 인증된 요청의 없는 경로가 기존 404 계약을 유지하는지는 MockMvc로 검증했다.
